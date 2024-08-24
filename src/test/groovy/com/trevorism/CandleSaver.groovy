@@ -16,7 +16,7 @@ class CandleSaver {
     private static final String DATASET_NAME = "crypto"
     private static final String GCP_DEFAULT_PROJECT = "trevorism-data"
 
-    @Test
+    //@Test
     void saveCandles() {
         KrakenClient krakenClient = new DefaultKrakenClient()
         List<Candle> candles = krakenClient.getCandles("BTCUSD", ValidCandleDurations.DAY)
