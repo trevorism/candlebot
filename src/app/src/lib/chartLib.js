@@ -3,8 +3,9 @@ let isPanning = false, isScalingY = false;
 let startX = 0, startY = 0;
 let offsetX = 0, offsetY = 0;
 
-const defaultBarWidth = 30;
-const defaultValueHeight = 20;
+let defaultValueHeight = 30;
+let defaultBarWidth = 90;
+
 const defaultWidth = 1250;
 const defaultHeight = 650;
 const axisOffset = 50;
@@ -160,16 +161,20 @@ export const teardownChart = (chartRef) => {
 };
 
 const setViewportOffsetAndScale = (minX, maxX, minY, maxY, length) => {
+    defaultBarWidth = defaultWidth / 2 / length;
+    defaultValueHeight = defaultHeight / 2 / (maxY - minY);
+
     //convert to Pixels
     const minXPixel = (axisOffset + minX * defaultBarWidth) * scaleX;
     const maxXPixel = (axisOffset + maxX * defaultBarWidth) * scaleX;
     const minYPixel = (defaultHeight - axisOffset - minY * defaultValueHeight) * scaleY;
     const maxYPixel = (defaultHeight - axisOffset - maxY * defaultValueHeight) * scaleY;
 
-    scaleX = defaultBarWidth / length;
-    scaleY = (maxY - minY) / defaultValueHeight;
-    offsetY = 200 - maxYPixel
+    console.log(minX, maxX, minY, maxY);
+    console.log(minXPixel, maxXPixel, minYPixel, maxYPixel);
+
     offsetX = minXPixel * scaleX * -1 + 200;
+    offsetY = defaultHeight - minYPixel * scaleY - 200;
 }
 
 const drawAxisOnChart = (context) => {
@@ -214,22 +219,21 @@ const drawXAxisLabels = (context) => {
 
 const drawYAxisTicks = (context) => {
     context.beginPath();
-    for (let i = 0; i < 50; i++) {
-        const yAxisValue = (defaultHeight - axisOffset - i * defaultValueHeight) * scaleY + offsetY;
-        if(yAxisValue < 0 || yAxisValue > defaultHeight - axisOffset) {
-            continue;
-        }
+    const tickCount = Math.round(30 / scaleY);
+    for (let i = 0; i < tickCount; i++) {
+        const yAxisValue = (defaultHeight - axisOffset - i * 30) * scaleY + offsetY;
+
 
         context.moveTo(axisOffset, yAxisValue);
-        context.lineTo(axisOffset + 5, (defaultHeight - axisOffset - i * defaultValueHeight) * scaleY + offsetY);
+        context.lineTo(axisOffset + 5, (defaultHeight - axisOffset - i * 30) * scaleY + offsetY);
     }
     context.stroke();
 };
 
 const drawYAxisLabels = (context) => {
     context.font = "20px Arial";
-    for (let i = 0; i < 50; i++) {
-        const yAxisValue = (defaultHeight - axisOffset + 5 - i * defaultValueHeight) * scaleY + offsetY;
+    for (let i = 0; i < 30; i++) {
+        const yAxisValue = (defaultHeight - axisOffset + 5 - i * 30) * scaleY + offsetY;
         if(yAxisValue < 0 || yAxisValue > defaultHeight - axisOffset) {
             continue;
         }
