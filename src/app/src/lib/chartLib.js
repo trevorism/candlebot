@@ -3,28 +3,91 @@ let isPanning = false, isScalingY = false;
 let startX = 0, startY = 0;
 let offsetX = 0, offsetY = 0;
 
-export const drawAll = (context) => {
+const defaultBarWidth = 30;
+const defaultValueHeight = 20;
+const defaultWidth = 1250;
+const defaultHeight = 650;
+const axisOffset = 50;
+
+export const drawAll = (context, candlesticks) => {
     context.clearRect(0, 0, context.canvas.width, context.canvas.height);
     drawAxisOnChart(context);
-    drawCandlesticks(context);
+    drawCandlesticks(context, candlesticks);
 };
 
-const drawCandlesticks = (context) => {
-    drawCandlestick(context, 1, 4, 0, 2, 8);
-    drawCandlestick(context, 2, 5, 1, 4, 9);
-    drawCandlestick(context, 4, 6, 0, 1, 10);
-    drawCandlestick(context, 1, 6, 1, 3, 11);
+const drawCandlesticks = (context, candlesticks) => {
+    if(!candlesticks)
+        return;
+
+    candlesticks.forEach(candle => {
+        drawCandlestick(context, candle.open, candle.high, candle.low, candle.close, candle.x);
+    });
 };
 
-const handleWheel = (event, chartRef) => {
+// Add function to draw the crosshair
+const drawCrosshair = (context, x, y) => {
+    context.strokeStyle = 'black';
+    context.setLineDash([5, 5]);
+
+    // Draw vertical line
+    context.beginPath();
+    context.moveTo(x, 0);
+    context.lineTo(x, defaultHeight - axisOffset);
+    context.stroke();
+
+    // Draw horizontal line
+    context.beginPath();
+    context.moveTo(axisOffset, y);
+    context.lineTo(defaultWidth - axisOffset, y);
+    context.stroke();
+
+    context.setLineDash([]);
+
+    context.font = "12px Arial";
+    const xValue = Math.round((((x - offsetX) / scaleX) - axisOffset  ) / defaultBarWidth);
+    const yValue = Math.round((defaultHeight - axisOffset - ((y - offsetY) / scaleY)) / defaultValueHeight);
+
+    context.fillStyle = "blue";
+    context.strokeStyle = context.fillStyle;
+    context.fillText(`X': ${xValue}`, x + 5, y + 10);
+    context.fillText(`Y': ${yValue}`, x + 5, y + 20);
+    context.fillText(`OffsetX': ${offsetX}`, x + 5, y + 30);
+    context.fillText(`OffsetY: ${offsetY}`, x + 5, y + 40);
+    context.fillText(`ScaleX': ${scaleX}`, x + 5, y + 50);
+    context.fillText(`Scaley: ${scaleY}`, x + 5, y + 60);
+};
+
+
+const getMinMaxValues = (candlesticks) => {
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+
+    if(!candlesticks)
+        return;
+
+    candlesticks.forEach(candle => {
+        if (candle.x < minX) minX = candle.x;
+        if (candle.x > maxX) maxX = candle.x;
+        if (candle.low < minY) minY = candle.low;
+        if (candle.high > maxY) maxY = candle.high;
+    });
+
+    const length = candlesticks.length;
+    return { minX, maxX, minY, maxY, length };
+};
+
+const handleWheel = (event, chartRef, candlesticks) => {
     event.preventDefault();
+    const oldScaleX = scaleX;
     if (event.deltaY < 0) {
         scaleX *= 1.1; // Zoom in X
     } else {
         scaleX /= 1.1; // Zoom out X
     }
+    const mouseX = event.clientX - chartRef.value.getBoundingClientRect().left;
+    offsetX = mouseX - ((mouseX - offsetX) * (scaleX / oldScaleX));
     const context = chartRef.value.getContext("2d");
-    drawAll(context);
+    drawAll(context, candlesticks);
 };
 
 const startPan = (event, chartRef) => {
@@ -38,17 +101,18 @@ const startPan = (event, chartRef) => {
     startY = event.clientY - offsetY;
 };
 
-const pan = (event, chartRef) => {
+const pan = (event, chartRef, candlesticks) => {
     if (isPanning) {
         offsetX = event.clientX - startX;
         offsetY = event.clientY - startY;
     } else if (isScalingY) {
         const deltaY = event.clientY - startY;
-        scaleY += deltaY * 0.002; // Adjust the scaling factor as needed
+        const normalizedDeltaY = deltaY > 0 ? 1 : -1;
+        scaleY += normalizedDeltaY * 0.004; // Adjust the scaling factor as needed
         startY = event.clientY;
     }
     const context = chartRef.value.getContext("2d");
-    drawAll(context);
+    drawAll(context, candlesticks);
 };
 
 const endPan = () => {
@@ -62,6 +126,8 @@ const handleMouseMove = (event, chartRef) => {
     const mouseX = event.clientX - rect.left;
     const mouseY = event.clientY - rect.top;
 
+    drawCrosshair(canvas.getContext("2d"), mouseX, mouseY);
+
     if (mouseX < 50) {
         canvas.style.cursor = 'ns-resize';
     } else {
@@ -69,12 +135,16 @@ const handleMouseMove = (event, chartRef) => {
     }
 };
 
-export const setupChart = (chartRef) => {
+export const setupChart = (chartRef, candlesticks) => {
     const context = chartRef.value.getContext("2d");
-    drawAll(context);
-    chartRef.value.addEventListener("wheel", (event) => handleWheel(event, chartRef));
+    const { minX, maxX, minY, maxY, length } = getMinMaxValues(candlesticks);
+
+    setViewportOffsetAndScale(minX, maxX, minY, maxY, length);
+
+    drawAll(context, candlesticks);
+    chartRef.value.addEventListener("wheel", (event) => handleWheel(event, chartRef, candlesticks));
     chartRef.value.addEventListener("mousedown", (event) => startPan(event, chartRef));
-    chartRef.value.addEventListener("mousemove", (event) => pan(event, chartRef));
+    chartRef.value.addEventListener("mousemove", (event) => pan(event, chartRef, candlesticks));
     chartRef.value.addEventListener("mouseup", endPan);
     chartRef.value.addEventListener("mouseleave", endPan);
     chartRef.value.addEventListener("mousemove", (event) => handleMouseMove(event, chartRef));
@@ -89,13 +159,26 @@ export const teardownChart = (chartRef) => {
     chartRef.value.removeEventListener("mousemove", (event) => handleMouseMove(event, chartRef));
 };
 
+const setViewportOffsetAndScale = (minX, maxX, minY, maxY, length) => {
+    //convert to Pixels
+    const minXPixel = (axisOffset + minX * defaultBarWidth) * scaleX;
+    const maxXPixel = (axisOffset + maxX * defaultBarWidth) * scaleX;
+    const minYPixel = (defaultHeight - axisOffset - minY * defaultValueHeight) * scaleY;
+    const maxYPixel = (defaultHeight - axisOffset - maxY * defaultValueHeight) * scaleY;
+
+    scaleX = defaultBarWidth / length;
+    scaleY = (maxY - minY) / defaultValueHeight;
+    offsetY = 200 - maxYPixel
+    offsetX = minXPixel * scaleX * -1 + 200;
+}
+
 const drawAxisOnChart = (context) => {
     context.fillStyle = "black";
     context.strokeStyle = context.fillStyle;
     context.beginPath();
-    context.moveTo(50, 50);
-    context.lineTo(50, 650);
-    context.lineTo(1150, 650);
+    context.moveTo(axisOffset, 0);
+    context.lineTo(axisOffset, defaultHeight - 50);
+    context.lineTo(defaultWidth, defaultHeight - 50);
     context.stroke();
 
     drawXAxisTicks(context);
@@ -106,33 +189,51 @@ const drawAxisOnChart = (context) => {
 
 const drawXAxisTicks = (context) => {
     context.beginPath();
-    for (let i = 0; i < 30; i++) {
-        context.moveTo((50 + i * 30) * scaleX + offsetX, 650);
-        context.lineTo((50 + i * 30) * scaleX + offsetX, 645);
+    for (let i = 0; i < 50; i++) {
+        const xAxisValue = (axisOffset + i * defaultBarWidth) * scaleX + offsetX;
+        if(xAxisValue < 50 || xAxisValue > defaultWidth) {
+            continue;
+        }
+
+        context.moveTo(xAxisValue, defaultHeight - axisOffset);
+        context.lineTo(xAxisValue, defaultHeight - axisOffset - 5);
     }
     context.stroke();
 };
 
 const drawXAxisLabels = (context) => {
     context.font = "20px Arial";
-    for (let i = 0; i < 30; i++) {
-        context.fillText(i, (45 + i * 30) * scaleX + offsetX, 670);
+    for (let i = 0; i < 50; i++) {
+        const xAxisValue = (axisOffset - 6 + i * defaultBarWidth) * scaleX + offsetX;
+        if(xAxisValue < axisOffset || xAxisValue > (defaultWidth - axisOffset)) {
+            continue;
+        }
+        context.fillText(i, xAxisValue, defaultHeight - axisOffset + 20);
     }
 };
 
 const drawYAxisTicks = (context) => {
     context.beginPath();
-    for (let i = 0; i < 6; i++) {
-        context.moveTo(50, (650 - i * 100) * scaleY + offsetY);
-        context.lineTo(55, (650 - i * 100) * scaleY + offsetY);
+    for (let i = 0; i < 50; i++) {
+        const yAxisValue = (defaultHeight - axisOffset - i * defaultValueHeight) * scaleY + offsetY;
+        if(yAxisValue < 0 || yAxisValue > defaultHeight - axisOffset) {
+            continue;
+        }
+
+        context.moveTo(axisOffset, yAxisValue);
+        context.lineTo(axisOffset + 5, (defaultHeight - axisOffset - i * defaultValueHeight) * scaleY + offsetY);
     }
     context.stroke();
 };
 
 const drawYAxisLabels = (context) => {
     context.font = "20px Arial";
-    for (let i = 0; i < 6; i++) {
-        context.fillText(i, 20, (655 - i * 100) * scaleY + offsetY);
+    for (let i = 0; i < 50; i++) {
+        const yAxisValue = (defaultHeight - axisOffset + 5 - i * defaultValueHeight) * scaleY + offsetY;
+        if(yAxisValue < 0 || yAxisValue > defaultHeight - axisOffset) {
+            continue;
+        }
+        context.fillText(i, 20, yAxisValue);
     }
 };
 
@@ -149,17 +250,18 @@ const drawCandlestick = (context, open, high, low, close, x) => {
         top = close;
         bottom = open;
     }
+
     // Compute the position and draw a rectangle for the open and close
-    context.fillRect((50 + x * 30 - 14) * scaleX + offsetX, (650 - open * 100) * scaleY + offsetY, 28 * scaleX, (open * 100 - close * 100) * scaleY);
+    context.fillRect((axisOffset + x * defaultBarWidth - (defaultBarWidth / 2 - 1)) * scaleX + offsetX, (defaultHeight - axisOffset - open * defaultValueHeight) * scaleY + offsetY, (defaultBarWidth - 2) * scaleX, (open * defaultValueHeight - close * defaultValueHeight) * scaleY);
 
     // Draw the wicks
     context.beginPath();
-    context.moveTo((50 + x * 30) * scaleX + offsetX, (650 - high * 100) * scaleY + offsetY);
-    context.lineTo((50 + x * 30) * scaleX + offsetX, (650 - top * 100) * scaleY + offsetY);
+    context.moveTo((axisOffset + x * defaultBarWidth) * scaleX + offsetX, (defaultHeight - axisOffset - high * defaultValueHeight) * scaleY + offsetY);
+    context.lineTo((axisOffset + x * defaultBarWidth) * scaleX + offsetX, (defaultHeight - axisOffset - top * defaultValueHeight) * scaleY + offsetY);
     context.stroke();
 
     context.beginPath();
-    context.moveTo((50 + x * 30) * scaleX + offsetX, (650 - low * 100) * scaleY + offsetY);
-    context.lineTo((50 + x * 30) * scaleX + offsetX, (650 - bottom * 100) * scaleY + offsetY);
+    context.moveTo((axisOffset + x * defaultBarWidth) * scaleX + offsetX, (defaultHeight - axisOffset - low * defaultValueHeight) * scaleY + offsetY);
+    context.lineTo((axisOffset + x * defaultBarWidth) * scaleX + offsetX, (defaultHeight - axisOffset - bottom * defaultValueHeight) * scaleY + offsetY);
     context.stroke();
 };
