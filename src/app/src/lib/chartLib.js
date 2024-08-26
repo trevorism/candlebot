@@ -10,6 +10,48 @@ const defaultWidth = 1250;
 const defaultHeight = 650;
 const axisOffset = 50;
 
+let xLabelLookup = {}; // Declare xLabelLookup as a global variable
+
+export const setupChart = (chartRef, candlesticks) => {
+    const context = chartRef.value.getContext("2d");
+    xLabelLookup = createXLabelLookup(candlesticks); // Initialize xLabelLookup
+    setViewportOffsetAndScale(candlesticks);
+
+    drawAll(context, candlesticks);
+    chartRef.value.addEventListener("wheel", (event) => handleWheel(event, chartRef, candlesticks));
+    chartRef.value.addEventListener("mousedown", (event) => startPan(event, chartRef));
+    chartRef.value.addEventListener("mousemove", (event) => pan(event, chartRef, candlesticks));
+    chartRef.value.addEventListener("mouseup", endPan);
+    chartRef.value.addEventListener("mouseleave", endPan);
+    chartRef.value.addEventListener("mousemove", (event) => handleMouseMove(event, chartRef));
+};
+
+export const teardownChart = (chartRef) => {
+    chartRef.value.removeEventListener("wheel", (event) => handleWheel(event, chartRef));
+    chartRef.value.removeEventListener("mousedown", (event) => startPan(event, chartRef));
+    chartRef.value.removeEventListener("mousemove", (event) => pan(event, chartRef));
+    chartRef.value.removeEventListener("mouseup", endPan);
+    chartRef.value.removeEventListener("mouseleave", endPan);
+    chartRef.value.removeEventListener("mousemove", (event) => handleMouseMove(event, chartRef));
+};
+
+export const setViewportOffsetAndScale = (candlesticks) => {
+    const { minX, maxX, minY, maxY, length } = getMinMaxValues(candlesticks);
+    defaultBarWidth = defaultWidth / 2 / length;
+    defaultValueHeight = defaultHeight / 2 / (maxY - minY);
+
+    //convert to Pixels
+    const minXPixel = (axisOffset + minX * defaultBarWidth) * scaleX;
+    const maxXPixel = (axisOffset + maxX * defaultBarWidth) * scaleX;
+    const minYPixel = (defaultHeight - axisOffset - minY * defaultValueHeight) * scaleY;
+    const maxYPixel = (defaultHeight - axisOffset - maxY * defaultValueHeight) * scaleY;
+
+    offsetX = minXPixel * scaleX * -1 + 200;
+    offsetY = defaultHeight - minYPixel * scaleY - 200;
+    scaleX = 1;
+    scaleY = 1;
+}
+
 export const drawAll = (context, candlesticks) => {
     context.clearRect(0, 0, context.canvas.width, context.canvas.height);
     drawAxisOnChart(context);
@@ -25,35 +67,123 @@ const drawCandlesticks = (context, candlesticks) => {
     });
 };
 
-// Add function to draw the crosshair
-const drawCrosshair = (context, x, y) => {
-    context.strokeStyle = 'black';
-    context.setLineDash([5, 5]);
-
-    // Draw vertical line
-    context.beginPath();
-    context.moveTo(x, 0);
-    context.lineTo(x, defaultHeight - axisOffset);
-    context.stroke();
-
-    // Draw horizontal line
-    context.beginPath();
-    context.moveTo(axisOffset, y);
-    context.lineTo(defaultWidth, y);
-    context.stroke();
-
-    context.setLineDash([]);
-
-    context.font = "12px Arial";
-    const xValue = Math.round((((x - offsetX) / scaleX) - axisOffset  ) / defaultBarWidth);
-    const yValue = Math.round((defaultHeight - axisOffset - ((y - offsetY) / scaleY)) / defaultValueHeight);
-
-    context.fillStyle = "blue";
+const drawAxisOnChart = (context) => {
+    context.fillStyle = "black";
     context.strokeStyle = context.fillStyle;
-    context.fillText(`X': ${xValue}`, x + 5, y + 10);
-    context.fillText(`Y': ${yValue}`, x + 5, y + 20);
+    context.beginPath();
+    context.moveTo(axisOffset, 0);
+    context.lineTo(axisOffset, defaultHeight - 50);
+    context.lineTo(defaultWidth, defaultHeight - 50);
+    context.stroke();
+
+    drawXAxisTicks(context);
+    drawXAxisLabels(context);
+    drawYAxisTicks(context);
+    drawYAxisLabels(context);
 };
 
+const drawXAxisTicks = (context) => {
+    context.beginPath();
+    const tickCount = 30;
+    let xAxisValue = (axisOffset) * scaleX + offsetX;
+    if(xAxisValue < axisOffset) {
+        xAxisValue = axisOffset - offsetX % 60
+    }
+
+    for (let i = 0; i < tickCount; i++) {
+        context.moveTo(xAxisValue, defaultHeight - axisOffset);
+        context.lineTo(xAxisValue, defaultHeight - axisOffset - 5);
+        xAxisValue += 60;
+    }
+    context.stroke();
+};
+
+const drawXAxisLabels = (context) => {
+    context.font = "12px Arial";
+    const tickCount = 30;
+    let xAxisValue = (axisOffset) * scaleX + offsetX;
+    if (xAxisValue < axisOffset) {
+        xAxisValue = axisOffset - offsetX % 60;
+    }
+
+    for (let i = 0; i < tickCount; i++) {
+        const xValue = Math.round((((xAxisValue - offsetX) / scaleX) - axisOffset) / defaultBarWidth);
+        const xLabel = xLabelLookup[xValue];
+
+        if (xLabel) {
+            context.save();
+            context.translate(xAxisValue - 25, defaultHeight - axisOffset + 60);
+            context.rotate(-Math.PI / 3);
+            context.fillText(xLabel, 0, 0);
+            context.restore();
+        } else {
+            // Draw the x value horizontally
+            context.fillText(xValue, xAxisValue - 5, defaultHeight - axisOffset + 20);
+        }
+
+        xAxisValue += 60;
+    }
+};
+
+const drawYAxisTicks = (context) => {
+    context.beginPath();
+    const tickCount = 30;
+    let yAxisValue = (defaultHeight - axisOffset) * scaleY + offsetY;
+    if(yAxisValue > 600){
+        yAxisValue = 600 - yAxisValue % 30
+    }
+
+    for (let i = 0; i < tickCount; i++) {
+        context.moveTo(axisOffset, yAxisValue);
+        context.lineTo(axisOffset + 5, yAxisValue);
+        yAxisValue -= 30;
+    }
+    context.stroke();
+};
+
+const drawYAxisLabels = (context) => {
+    context.font = "12px Arial";
+    const tickCount = 30;
+    let yAxisValue = (defaultHeight - axisOffset) * scaleY + offsetY;
+    if(yAxisValue > 600){
+        yAxisValue = 600 - yAxisValue % 30
+    }
+
+    for (let i = 0; i < tickCount; i++) {
+        const yValue = Math.round((defaultHeight - axisOffset - ((yAxisValue - offsetY) / scaleY)) / defaultValueHeight)
+        context.fillText(yValue, 10, yAxisValue + 3);
+        yAxisValue -= 30;
+    }
+};
+
+const drawCandlestick = (context, open, high, low, close, x) => {
+    let top = open;
+    let bottom = close;
+
+    if (open > close) {
+        context.fillStyle = "red";
+        context.strokeStyle = context.fillStyle;
+    } else {
+        context.fillStyle = "green";
+        context.strokeStyle = context.fillStyle;
+        top = close;
+        bottom = open;
+    }
+
+    // Compute the position and draw a rectangle for the open and close
+    context.fillRect((axisOffset + x * defaultBarWidth - (defaultBarWidth / 2 - 1)) * scaleX + offsetX, (defaultHeight - axisOffset - open * defaultValueHeight) * scaleY + offsetY, (defaultBarWidth - 2) * scaleX, (open * defaultValueHeight - close * defaultValueHeight) * scaleY);
+
+    // Draw the wicks
+    context.beginPath();
+    context.moveTo((axisOffset + x * defaultBarWidth) * scaleX + offsetX, (defaultHeight - axisOffset - high * defaultValueHeight) * scaleY + offsetY);
+    context.lineTo((axisOffset + x * defaultBarWidth) * scaleX + offsetX, (defaultHeight - axisOffset - top * defaultValueHeight) * scaleY + offsetY);
+    context.stroke();
+
+    context.beginPath();
+    context.moveTo((axisOffset + x * defaultBarWidth) * scaleX + offsetX, (defaultHeight - axisOffset - low * defaultValueHeight) * scaleY + offsetY);
+    context.lineTo((axisOffset + x * defaultBarWidth) * scaleX + offsetX, (defaultHeight - axisOffset - bottom * defaultValueHeight) * scaleY + offsetY);
+    context.stroke();
+};
 
 const getMinMaxValues = (candlesticks) => {
     let minX = Infinity, maxX = -Infinity;
@@ -71,6 +201,22 @@ const getMinMaxValues = (candlesticks) => {
 
     const length = maxX - minX;
     return { minX, maxX, minY, maxY, length };
+};
+
+export const createXLabelLookup = (candlesticks) => {
+    const lookup = {};
+    candlesticks.forEach(candle => {
+        if (candle.xLabel) {
+            let xLabel = candle.xLabel;
+            // Check if xLabel is a date
+            if (!isNaN(Date.parse(xLabel))) {
+                const date = new Date(xLabel);
+                xLabel = date.toISOString().split('T')[0]; // Format to yyyy-mm-dd
+            }
+            lookup[candle.x] = xLabel;
+        }
+    });
+    return lookup;
 };
 
 const handleWheel = (event, chartRef, candlesticks) => {
@@ -139,148 +285,31 @@ const handleMouseMove = (event, chartRef) => {
     }
 };
 
-export const setupChart = (chartRef, candlesticks) => {
-    const context = chartRef.value.getContext("2d");
-    setViewportOffsetAndScale(candlesticks);
+const drawCrosshair = (context, x, y) => {
+    context.strokeStyle = 'black';
+    context.setLineDash([5, 5]);
 
-    drawAll(context, candlesticks);
-    chartRef.value.addEventListener("wheel", (event) => handleWheel(event, chartRef, candlesticks));
-    chartRef.value.addEventListener("mousedown", (event) => startPan(event, chartRef));
-    chartRef.value.addEventListener("mousemove", (event) => pan(event, chartRef, candlesticks));
-    chartRef.value.addEventListener("mouseup", endPan);
-    chartRef.value.addEventListener("mouseleave", endPan);
-    chartRef.value.addEventListener("mousemove", (event) => handleMouseMove(event, chartRef));
-};
+    // Draw vertical line
+    context.beginPath();
+    context.moveTo(x, 0);
+    context.lineTo(x, defaultHeight - axisOffset);
+    context.stroke();
 
-export const teardownChart = (chartRef) => {
-    chartRef.value.removeEventListener("wheel", (event) => handleWheel(event, chartRef));
-    chartRef.value.removeEventListener("mousedown", (event) => startPan(event, chartRef));
-    chartRef.value.removeEventListener("mousemove", (event) => pan(event, chartRef));
-    chartRef.value.removeEventListener("mouseup", endPan);
-    chartRef.value.removeEventListener("mouseleave", endPan);
-    chartRef.value.removeEventListener("mousemove", (event) => handleMouseMove(event, chartRef));
-};
+    // Draw horizontal line
+    context.beginPath();
+    context.moveTo(axisOffset, y);
+    context.lineTo(defaultWidth, y);
+    context.stroke();
 
-export const setViewportOffsetAndScale = (candlesticks) => {
-    const { minX, maxX, minY, maxY, length } = getMinMaxValues(candlesticks);
-    defaultBarWidth = defaultWidth / 2 / length;
-    defaultValueHeight = defaultHeight / 2 / (maxY - minY);
+    context.setLineDash([]);
 
-    //convert to Pixels
-    const minXPixel = (axisOffset + minX * defaultBarWidth) * scaleX;
-    const maxXPixel = (axisOffset + maxX * defaultBarWidth) * scaleX;
-    const minYPixel = (defaultHeight - axisOffset - minY * defaultValueHeight) * scaleY;
-    const maxYPixel = (defaultHeight - axisOffset - maxY * defaultValueHeight) * scaleY;
+    context.font = "12px Arial";
+    const xValue = Math.round((((x - offsetX) / scaleX) - axisOffset) / defaultBarWidth);
+    const yValue = Math.round((defaultHeight - axisOffset - ((y - offsetY) / scaleY)) / defaultValueHeight);
+    const xLabel = xLabelLookup[xValue] || xValue;
 
-    offsetX = minXPixel * scaleX * -1 + 200;
-    offsetY = defaultHeight - minYPixel * scaleY - 200;
-    scaleX = 1;
-    scaleY = 1;
-}
-
-const drawAxisOnChart = (context) => {
-    context.fillStyle = "black";
+    context.fillStyle = "blue";
     context.strokeStyle = context.fillStyle;
-    context.beginPath();
-    context.moveTo(axisOffset, 0);
-    context.lineTo(axisOffset, defaultHeight - 50);
-    context.lineTo(defaultWidth, defaultHeight - 50);
-    context.stroke();
-
-    drawXAxisTicks(context);
-    drawXAxisLabels(context);
-    drawYAxisTicks(context);
-    drawYAxisLabels(context);
-};
-
-const drawXAxisTicks = (context) => {
-    context.beginPath();
-    const tickCount = 30;
-    let xAxisValue = (axisOffset) * scaleX + offsetX;
-    if(xAxisValue < axisOffset) {
-        xAxisValue = axisOffset - offsetX % 60
-    }
-
-    for (let i = 0; i < tickCount; i++) {
-        context.moveTo(xAxisValue, defaultHeight - axisOffset);
-        context.lineTo(xAxisValue, defaultHeight - axisOffset - 5);
-        xAxisValue += 60;
-    }
-    context.stroke();
-};
-
-const drawXAxisLabels = (context) => {
-    context.font = "12px Arial";
-    const tickCount = 30;
-    let xAxisValue = (axisOffset) * scaleX + offsetX;
-    if(xAxisValue < axisOffset) {
-        xAxisValue = axisOffset - offsetX % 60
-    }
-
-    for (let i = 0; i < tickCount; i++) {
-        const xValue = Math.round((((xAxisValue - offsetX) / scaleX) - axisOffset  ) / defaultBarWidth);
-        context.fillText(xValue, xAxisValue - 5, defaultHeight - axisOffset + 20);
-        xAxisValue += 60;
-    }
-
-};
-
-const drawYAxisTicks = (context) => {
-    context.beginPath();
-    const tickCount = 30;
-    let yAxisValue = (defaultHeight - axisOffset) * scaleY + offsetY;
-    if(yAxisValue > 600){
-        yAxisValue = 600 - yAxisValue % 30
-    }
-
-    for (let i = 0; i < tickCount; i++) {
-        context.moveTo(axisOffset, yAxisValue);
-        context.lineTo(axisOffset + 5, yAxisValue);
-        yAxisValue -= 30;
-    }
-    context.stroke();
-};
-
-const drawYAxisLabels = (context) => {
-    context.font = "12px Arial";
-    const tickCount = 30;
-    let yAxisValue = (defaultHeight - axisOffset) * scaleY + offsetY;
-    if(yAxisValue > 600){
-        yAxisValue = 600 - yAxisValue % 30
-    }
-
-    for (let i = 0; i < tickCount; i++) {
-        const yValue = Math.round((defaultHeight - axisOffset - ((yAxisValue - offsetY) / scaleY)) / defaultValueHeight)
-        context.fillText(yValue, 10, yAxisValue + 3);
-        yAxisValue -= 30;
-    }
-};
-
-const drawCandlestick = (context, open, high, low, close, x) => {
-    let top = open;
-    let bottom = close;
-
-    if (open > close) {
-        context.fillStyle = "red";
-        context.strokeStyle = context.fillStyle;
-    } else {
-        context.fillStyle = "green";
-        context.strokeStyle = context.fillStyle;
-        top = close;
-        bottom = open;
-    }
-
-    // Compute the position and draw a rectangle for the open and close
-    context.fillRect((axisOffset + x * defaultBarWidth - (defaultBarWidth / 2 - 1)) * scaleX + offsetX, (defaultHeight - axisOffset - open * defaultValueHeight) * scaleY + offsetY, (defaultBarWidth - 2) * scaleX, (open * defaultValueHeight - close * defaultValueHeight) * scaleY);
-
-    // Draw the wicks
-    context.beginPath();
-    context.moveTo((axisOffset + x * defaultBarWidth) * scaleX + offsetX, (defaultHeight - axisOffset - high * defaultValueHeight) * scaleY + offsetY);
-    context.lineTo((axisOffset + x * defaultBarWidth) * scaleX + offsetX, (defaultHeight - axisOffset - top * defaultValueHeight) * scaleY + offsetY);
-    context.stroke();
-
-    context.beginPath();
-    context.moveTo((axisOffset + x * defaultBarWidth) * scaleX + offsetX, (defaultHeight - axisOffset - low * defaultValueHeight) * scaleY + offsetY);
-    context.lineTo((axisOffset + x * defaultBarWidth) * scaleX + offsetX, (defaultHeight - axisOffset - bottom * defaultValueHeight) * scaleY + offsetY);
-    context.stroke();
+    context.fillText(`X': ${xLabel}`, x + 5, y + 10);
+    context.fillText(`Y': ${yValue}`, x + 5, y + 20);
 };
