@@ -1,30 +1,35 @@
 <script setup>
-import { onBeforeUnmount, onMounted, ref, toRefs } from "vue";
-import { setupChart, teardownChart, setViewportOffsetAndScale, drawAll, createXLabelLookup } from '../lib/chartLib.js';
+import {onBeforeUnmount, onMounted, ref, toRefs, watch} from "vue";
+import {setupChart, teardownChart, setViewportOffsetAndScale, drawAll, createXLabelLookup} from '../lib/chartLib.js';
 
 const props = defineProps({
   candlesticks: {
-    type: Array,
-    required: true
+    type: Array
+
   }
 });
 
-const { candlesticks } = toRefs(props);
 const chartRef = ref(null);
 
 const resetViewport = () => {
-  setViewportOffsetAndScale(candlesticks.value);
+  setViewportOffsetAndScale(props.candlesticks);
   const context = chartRef.value.getContext("2d");
-  const xLabelLookup = createXLabelLookup(candlesticks.value);
-  drawAll(context, candlesticks.value, xLabelLookup);
+  const xLabelLookup = createXLabelLookup(props.candlesticks);
+  drawAll(context, props.candlesticks, xLabelLookup);
 };
 
 onMounted(() => {
-  setupChart(chartRef, candlesticks.value);
+  setupChart(chartRef, props.candlesticks);
 });
 
 onBeforeUnmount(() => {
   teardownChart(chartRef);
+});
+
+watch(props.candlesticks, (newCandlesticks) => {
+  if (newCandlesticks.length > 0) {
+    resetViewport();
+  }
 });
 </script>
 

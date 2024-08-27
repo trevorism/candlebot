@@ -10,11 +10,10 @@ const defaultWidth = 1250;
 const defaultHeight = 650;
 const axisOffset = 50;
 
-let xLabelLookup = {}; // Declare xLabelLookup as a global variable
+let xLabelLookup = {};
 
 export const setupChart = (chartRef, candlesticks) => {
     const context = chartRef.value.getContext("2d");
-    xLabelLookup = createXLabelLookup(candlesticks); // Initialize xLabelLookup
     setViewportOffsetAndScale(candlesticks);
 
     drawAll(context, candlesticks);
@@ -36,7 +35,7 @@ export const teardownChart = (chartRef) => {
 };
 
 export const setViewportOffsetAndScale = (candlesticks) => {
-    const { minX, maxX, minY, maxY, length } = getMinMaxValues(candlesticks);
+    const {minX, maxX, minY, maxY, length} = getMinMaxValues(candlesticks);
     defaultBarWidth = defaultWidth / 2 / length;
     defaultValueHeight = defaultHeight / 2 / (maxY - minY);
 
@@ -54,12 +53,12 @@ export const setViewportOffsetAndScale = (candlesticks) => {
 
 export const drawAll = (context, candlesticks) => {
     context.clearRect(0, 0, context.canvas.width, context.canvas.height);
-    drawAxisOnChart(context);
+    drawAxisOnChart(context, candlesticks);
     drawCandlesticks(context, candlesticks);
 };
 
 const drawCandlesticks = (context, candlesticks) => {
-    if(!candlesticks)
+    if (!candlesticks)
         return;
 
     candlesticks.forEach(candle => {
@@ -67,7 +66,7 @@ const drawCandlesticks = (context, candlesticks) => {
     });
 };
 
-const drawAxisOnChart = (context) => {
+const drawAxisOnChart = (context, candlesticks) => {
     context.fillStyle = "black";
     context.strokeStyle = context.fillStyle;
     context.beginPath();
@@ -77,7 +76,7 @@ const drawAxisOnChart = (context) => {
     context.stroke();
 
     drawXAxisTicks(context);
-    drawXAxisLabels(context);
+    drawXAxisLabels(context, candlesticks);
     drawYAxisTicks(context);
     drawYAxisLabels(context);
 };
@@ -86,7 +85,7 @@ const drawXAxisTicks = (context) => {
     context.beginPath();
     const tickCount = 30;
     let xAxisValue = (axisOffset) * scaleX + offsetX;
-    if(xAxisValue < axisOffset) {
+    if (xAxisValue < axisOffset) {
         xAxisValue = axisOffset - offsetX % 60
     }
 
@@ -98,8 +97,12 @@ const drawXAxisTicks = (context) => {
     context.stroke();
 };
 
-const drawXAxisLabels = (context) => {
+const drawXAxisLabels = (context, candlesticks) => {
     context.font = "12px Arial";
+    if (candlesticks) {
+        xLabelLookup = createXLabelLookup(candlesticks);
+    }
+
     const tickCount = 30;
     let xAxisValue = (axisOffset) * scaleX + offsetX;
     if (xAxisValue < axisOffset) {
@@ -129,7 +132,7 @@ const drawYAxisTicks = (context) => {
     context.beginPath();
     const tickCount = 30;
     let yAxisValue = (defaultHeight - axisOffset) * scaleY + offsetY;
-    if(yAxisValue > 600){
+    if (yAxisValue > 600) {
         yAxisValue = 600 - yAxisValue % 30
     }
 
@@ -145,7 +148,7 @@ const drawYAxisLabels = (context) => {
     context.font = "12px Arial";
     const tickCount = 30;
     let yAxisValue = (defaultHeight - axisOffset) * scaleY + offsetY;
-    if(yAxisValue > 600){
+    if (yAxisValue > 600) {
         yAxisValue = 600 - yAxisValue % 30
     }
 
@@ -189,7 +192,7 @@ const getMinMaxValues = (candlesticks) => {
     let minX = Infinity, maxX = -Infinity;
     let minY = Infinity, maxY = -Infinity;
 
-    if(!candlesticks)
+    if (!candlesticks)
         return;
 
     candlesticks.forEach(candle => {
@@ -200,17 +203,17 @@ const getMinMaxValues = (candlesticks) => {
     });
 
     const length = maxX - minX;
-    return { minX, maxX, minY, maxY, length };
+    return {minX, maxX, minY, maxY, length};
 };
 
 export const createXLabelLookup = (candlesticks) => {
     const lookup = {};
     candlesticks.forEach(candle => {
-        if (candle.xLabel) {
-            let xLabel = candle.xLabel;
-            // Check if xLabel is a date
-            if (!isNaN(Date.parse(xLabel))) {
-                const date = new Date(xLabel);
+        if (candle.label) {
+            let xLabel = candle.label;
+            // Check if xLabel is a valid timestamp
+            if (!isNaN(xLabel) && !isNaN(parseInt(xLabel))) {
+                const date = new Date(parseInt(xLabel));
                 xLabel = date.toISOString().split('T')[0]; // Format to yyyy-mm-dd
             }
             lookup[candle.x] = xLabel;
