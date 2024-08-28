@@ -39,11 +39,8 @@ export const setViewportOffsetAndScale = (candlesticks) => {
     defaultBarWidth = defaultWidth / 2 / length;
     defaultValueHeight = defaultHeight / 2 / (maxY - minY);
 
-    //convert to Pixels
     const minXPixel = (axisOffset + minX * defaultBarWidth) * scaleX;
-    const maxXPixel = (axisOffset + maxX * defaultBarWidth) * scaleX;
     const minYPixel = (defaultHeight - axisOffset - minY * defaultValueHeight) * scaleY;
-    const maxYPixel = (defaultHeight - axisOffset - maxY * defaultValueHeight) * scaleY;
 
     offsetX = minXPixel * scaleX * -1 + 200;
     offsetY = defaultHeight - minYPixel * scaleY - 200;
@@ -120,7 +117,6 @@ const drawXAxisLabels = (context, candlesticks) => {
             context.fillText(xLabel, 0, 0);
             context.restore();
         } else {
-            // Draw the x value horizontally
             context.fillText(xValue, xAxisValue - 5, defaultHeight - axisOffset + 20);
         }
 
@@ -173,10 +169,8 @@ const drawCandlestick = (context, open, high, low, close, x) => {
         bottom = open;
     }
 
-    // Compute the position and draw a rectangle for the open and close
-    context.fillRect((axisOffset + x * defaultBarWidth - (defaultBarWidth / 2 - 1)) * scaleX + offsetX, (defaultHeight - axisOffset - open * defaultValueHeight) * scaleY + offsetY, (defaultBarWidth - 2) * scaleX, (open * defaultValueHeight - close * defaultValueHeight) * scaleY);
+    context.fillRect((axisOffset + x * defaultBarWidth - (defaultBarWidth / 2)) * scaleX + offsetX, (defaultHeight - axisOffset - open * defaultValueHeight) * scaleY + offsetY, (defaultBarWidth) * scaleX, (open * defaultValueHeight - close * defaultValueHeight) * scaleY);
 
-    // Draw the wicks
     context.beginPath();
     context.moveTo((axisOffset + x * defaultBarWidth) * scaleX + offsetX, (defaultHeight - axisOffset - high * defaultValueHeight) * scaleY + offsetY);
     context.lineTo((axisOffset + x * defaultBarWidth) * scaleX + offsetX, (defaultHeight - axisOffset - top * defaultValueHeight) * scaleY + offsetY);
@@ -211,7 +205,6 @@ export const createXLabelLookup = (candlesticks) => {
     candlesticks.forEach(candle => {
         if (candle.label) {
             let xLabel = candle.label;
-            // Check if xLabel is a valid timestamp
             if (!isNaN(xLabel) && !isNaN(parseInt(xLabel))) {
                 const date = new Date(parseInt(xLabel));
                 xLabel = date.toISOString().split('T')[0]; // Format to yyyy-mm-dd
@@ -227,9 +220,9 @@ const handleWheel = (event, chartRef, candlesticks) => {
     const minScaleX = 0.1;
     const oldScaleX = scaleX;
     if (event.deltaY < 0) {
-        scaleX *= 1.1; // Zoom in X
+        scaleX *= 1.1;
     } else {
-        scaleX /= 1.1; // Zoom out X
+        scaleX /= 1.1;
     }
     scaleX = Math.max(minScaleX, scaleX);
     const mouseX = event.clientX - chartRef.value.getBoundingClientRect().left;
@@ -258,7 +251,7 @@ const pan = (event, chartRef, candlesticks) => {
         const deltaY = event.clientY - startY;
         const normalizedDeltaY = deltaY > 0 ? -1 : 1;
         const oldScaleY = scaleY;
-        scaleY += normalizedDeltaY * 0.04; // Adjust the scaling factor as needed
+        scaleY += normalizedDeltaY * 0.04;
         scaleY = Math.max(minScaleY, scaleY);
         const mouseY = event.clientY - chartRef.value.getBoundingClientRect().top;
         offsetY = mouseY - ((mouseY - offsetY) * (scaleY / oldScaleY));
@@ -292,13 +285,11 @@ const drawCrosshair = (context, x, y) => {
     context.strokeStyle = 'black';
     context.setLineDash([5, 5]);
 
-    // Draw vertical line
     context.beginPath();
     context.moveTo(x, 0);
     context.lineTo(x, defaultHeight - axisOffset);
     context.stroke();
 
-    // Draw horizontal line
     context.beginPath();
     context.moveTo(axisOffset, y);
     context.lineTo(defaultWidth, y);
