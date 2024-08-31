@@ -1,29 +1,33 @@
 <script setup>
-import {onBeforeUnmount, onMounted, ref, toRefs, watch} from "vue";
-import {setupChart, teardownChart, setViewportOffsetAndScale, drawAll, createXLabelLookup} from '../lib/chartLib.js';
+import {onBeforeUnmount, onMounted, ref, watch} from "vue";
+import {createXLabelLookup, drawAll, setupChart, setViewportOffsetAndScale, teardownChart} from '../lib/chartLib.js';
 
 const props = defineProps({
   candlesticks: {
     type: Array
-
   }
 });
 
 const chartRef = ref(null);
+const yAxisRef = ref(null);
+const xAxisRef = ref(null);
 
 const resetViewport = () => {
   setViewportOffsetAndScale(props.candlesticks);
   const context = chartRef.value.getContext("2d");
+  const yAxisContext = yAxisRef.value.getContext("2d");
+  const xAxisContext = xAxisRef.value.getContext("2d");
+
   const xLabelLookup = createXLabelLookup(props.candlesticks);
-  drawAll(context, props.candlesticks, xLabelLookup);
+  drawAll(context, yAxisContext, xAxisContext, props.candlesticks, xLabelLookup);
 };
 
 onMounted(() => {
-  setupChart(chartRef, props.candlesticks);
+  setupChart(chartRef, yAxisRef, xAxisRef, props.candlesticks);
 });
 
 onBeforeUnmount(() => {
-  teardownChart(chartRef);
+  teardownChart(chartRef, yAxisRef, xAxisRef);
 });
 
 watch(props.candlesticks, (newCandlesticks) => {
@@ -34,8 +38,10 @@ watch(props.candlesticks, (newCandlesticks) => {
 </script>
 
 <template>
-  <canvas ref="chartRef" width="1250" height="680" tabindex='0' style="border: 1px solid black;"/>
-  <button @click="resetViewport" style="position: absolute; top:670px; left:10px">Reset</button>
+  <canvas ref="yAxisRef" width="50" height="600" tabindex='0' style="position: absolute; top: 100px; left: 0"/>
+  <canvas ref="xAxisRef" width="1200" height="80" tabindex='0' style="position: absolute; top: 700px; left: 50px"/>
+  <canvas ref="chartRef" width="1200" height="600" tabindex='0' style="border: 1px solid black; position: absolute; top: 100px; left: 50px"/>
+  <button @click="resetViewport" style="position: absolute; top:770px; left:10px">Reset</button>
 </template>
 
 <style scoped></style>
