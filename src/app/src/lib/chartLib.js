@@ -1,13 +1,13 @@
 let scaleX = 1, scaleY = 1;
-let isPanning = false, isScalingY = false, isScalingX = false;
-let startX = 0, startY = 0;
 let offsetX = 0, offsetY = 0;
+let startX = 0, startY = 0;
+let isPanning = false, isScalingY = false, isScalingX = false;
 
 let defaultValueHeight = 30;
 let defaultBarWidth = 90;
 
 const defaultWidth = 1200;
-const defaultHeight = 650;
+const defaultHeight = 600;
 const axisOffset = 50;
 
 let xLabelLookup = {};
@@ -33,24 +33,39 @@ export const setupChart = (chartRef, yAxisRef, xAxisRef, candlesticks) => {
     yAxisRef.value.addEventListener("mousedown", (event) => startScalingY(event));
     yAxisRef.value.addEventListener("mousemove", (event) => scaleYAxis(event, chartRef, yAxisContext, xAxisContext, candlesticks));
     yAxisRef.value.addEventListener("mouseup", endPan);
+    yAxisRef.value.addEventListener("mouseleave", endPan);
 
     xAxisRef.value.addEventListener("mousedown", (event) => startScalingX(event));
     xAxisRef.value.addEventListener("mousemove", (event) => scaleXAxis(event, chartRef, yAxisContext, xAxisContext, candlesticks));
     xAxisRef.value.addEventListener("mouseup", endPan);
-
+    xAxisRef.value.addEventListener("mouseleave", endPan);
 };
 
-export const teardownChart = (chartRef) => {
+export const teardownChart = (chartRef, yAxisRef, xAxisRef) => {
     chartRef.value.removeEventListener("wheel", (event) => handleWheel(event, chartRef));
     chartRef.value.removeEventListener("mousedown", (event) => startPan(event, chartRef));
     chartRef.value.removeEventListener("mousemove", (event) => pan(event, chartRef));
     chartRef.value.removeEventListener("mouseup", endPan);
     chartRef.value.removeEventListener("mouseleave", endPan);
     chartRef.value.removeEventListener("mousemove", (event) => handleMouseMove(event, chartRef));
+
+    yAxisRef.value.removeEventListener("mousedown", (event) => startScalingY(event));
+    yAxisRef.value.removeEventListener("mousemove", (event) => scaleYAxis(event, chartRef, yAxisContext, xAxisContext, candlesticks));
+    yAxisRef.value.removeEventListener("mouseup", endPan);
+    yAxisRef.value.removeEventListener("mouseleave", endPan);
+
+    xAxisRef.value.removeEventListener("mousedown", (event) => startScalingX(event));
+    xAxisRef.value.removeEventListener("mousemove", (event) => scaleXAxis(event, chartRef, yAxisContext, xAxisContext, candlesticks));
+    xAxisRef.value.removeEventListener("mouseup", endPan);
+    xAxisRef.value.removeEventListener("mouseleave", endPan);
+
 };
 
 export const setViewportOffsetAndScale = (candlesticks) => {
     const {minX, maxX, minY, maxY, length} = getMinMaxValues(candlesticks);
+    scaleX = 1;
+    scaleY = 1;
+
     defaultBarWidth = defaultWidth / 2 / length;
     defaultValueHeight = defaultHeight / 2 / (maxY - minY);
 
@@ -59,8 +74,6 @@ export const setViewportOffsetAndScale = (candlesticks) => {
 
     offsetX = -minXPixel + 300;
     offsetY = defaultHeight - minYPixel * scaleY - 200;
-    scaleX = 1;
-    scaleY = 1;
 }
 
 export const drawAll = (context, yAxisContext, xAxisContext, candlesticks) => {
@@ -109,15 +122,17 @@ const drawYAxisOnChart = (context, candlesticks) => {
 const drawXAxisTicks = (context) => {
     context.beginPath();
     const tickCount = 30;
+    const tickSpacing = Math.max(60, (defaultBarWidth) * scaleX + 5);
+
     let xAxisValue = offsetX;
     if (xAxisValue < 0) {
-        xAxisValue = 0 - offsetX % 60
+        xAxisValue = 0 - offsetX % tickSpacing
     }
 
     for (let i = 0; i < tickCount; i++) {
         context.moveTo(xAxisValue, 0);
         context.lineTo(xAxisValue, 5);
-        xAxisValue += 60;
+        xAxisValue += tickSpacing;
     }
     context.stroke();
 };
@@ -129,9 +144,10 @@ const drawXAxisLabels = (context, candlesticks) => {
     }
 
     const tickCount = 30;
+    const tickSpacing = Math.max(60, (defaultBarWidth) * scaleX + 5);
     let xAxisValue = offsetX;
     if (xAxisValue < 0) {
-        xAxisValue = 0 - offsetX % 60;
+        xAxisValue = 0 - offsetX % tickSpacing;
     }
 
     for (let i = 0; i < tickCount; i++) {
@@ -140,14 +156,14 @@ const drawXAxisLabels = (context, candlesticks) => {
 
         if (xLabel) {
             context.save();
-            context.translate(xAxisValue - 25, 60);
+            context.translate(xAxisValue - 25, 65);
             context.rotate(-Math.PI / 3);
             context.fillText(xLabel, 0, 0);
             context.restore();
         } else {
             //context.fillText(xValue, xAxisValue - 5, 20);
         }
-        xAxisValue += 60;
+        xAxisValue += tickSpacing;
     }
 };
 
@@ -338,8 +354,8 @@ const handleMouseMove = (event, chartRef, candlesticks) => {
 
     context.clearRect(0, 0, canvas.width, canvas.height);
 
-    drawCrosshair(context, mouseX, mouseY);
     drawCandlesticks(context, candlesticks);
+    drawCrosshair(context, mouseX, mouseY);
 };
 
 const drawCrosshair = (context, x, y) => {

@@ -41,7 +41,7 @@ watch(props.candlesticks, (newCandlesticks) => {
   <canvas ref="yAxisRef" width="50" height="600" tabindex='0' style="position: absolute; top: 100px; left: 0"/>
   <canvas ref="xAxisRef" width="1200" height="80" tabindex='0' style="position: absolute; top: 700px; left: 50px"/>
   <canvas ref="chartRef" width="1200" height="600" tabindex='0' style="border: 1px solid black; position: absolute; top: 100px; left: 50px"/>
-  <button @click="resetViewport" style="position: absolute; top:770px; left:10px">Reset</button>
+  <button @click="resetViewport" style="position: absolute; top:720px; left:10px">Reset</button>
 </template>
 
 <style scoped></style>
