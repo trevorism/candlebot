@@ -30,9 +30,10 @@ const updateInput = () => {
 
   <div class="assetPicker">
     Asset:
-    <va-select class="w-1/4 ml-4 mr-4" :options="assets" v-model="selectedAsset" @update:modelValue="updateInput"></va-select>
+    <va-select class="w-3/12 ml-4 mr-4" :options="assets" v-model="selectedAsset" @update:modelValue="updateInput"></va-select>
     Candle Duration:
-    <va-select class="ml-4 w-1/4" :options="timeFrames" v-model="selectedTimeFrame" @update:modelValue="updateInput"></va-select>
+    <va-select class="ml-4 w-1/8 mr-4" :options="timeFrames" v-model="selectedTimeFrame" @update:modelValue="updateInput"></va-select>
+    Current Price: {{candlesticks.length > 0 ? candlesticks[candlesticks.length - 1].close : "Loading..."}}
   </div>
 
   <financial-chart :candlesticks="candlesticks"></financial-chart>
@@ -43,7 +44,7 @@ const updateInput = () => {
     position: absolute;
     top: 100px;
     left: 100px;
-    width: 500px;
+    width: 1000px;
   }
 
 </style>

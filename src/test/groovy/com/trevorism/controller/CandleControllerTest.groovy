@@ -1,6 +1,5 @@
 package com.trevorism.controller
 
-import com.trevorism.kraken.model.ValidCandleDurations
 import com.trevorism.service.FileOrKrakenCandleProvider
 import org.junit.jupiter.api.Test
 
