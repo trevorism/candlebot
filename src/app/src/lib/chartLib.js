@@ -3,8 +3,8 @@ let offsetX = 0, offsetY = 0;
 let startX = 0, startY = 0;
 let isPanning = false, isScalingY = false, isScalingX = false;
 
-let defaultValueHeight = 30;
-let defaultBarWidth = 90;
+let valueHeight = 30;
+let barWidth = 90;
 
 const defaultWidth = 1200;
 const defaultHeight = 600;
@@ -50,12 +50,12 @@ export const teardownChart = (chartRef, yAxisRef, xAxisRef) => {
     chartRef.value.removeEventListener("mousemove", (event) => handleMouseMove(event, chartRef));
 
     yAxisRef.value.removeEventListener("mousedown", (event) => startScalingY(event));
-    yAxisRef.value.removeEventListener("mousemove", (event) => scaleYAxis(event, chartRef, yAxisContext, xAxisContext, candlesticks));
+    yAxisRef.value.removeEventListener("mousemove", (event) => scaleYAxis(event, chartRef));
     yAxisRef.value.removeEventListener("mouseup", endPan);
     yAxisRef.value.removeEventListener("mouseleave", endPan);
 
     xAxisRef.value.removeEventListener("mousedown", (event) => startScalingX(event));
-    xAxisRef.value.removeEventListener("mousemove", (event) => scaleXAxis(event, chartRef, yAxisContext, xAxisContext, candlesticks));
+    xAxisRef.value.removeEventListener("mousemove", (event) => scaleXAxis(event, chartRef));
     xAxisRef.value.removeEventListener("mouseup", endPan);
     xAxisRef.value.removeEventListener("mouseleave", endPan);
 
@@ -63,17 +63,18 @@ export const teardownChart = (chartRef, yAxisRef, xAxisRef) => {
 
 export const setViewportOffsetAndScale = (candlesticks) => {
     const {minX, maxX, minY, maxY, length} = getMinMaxValues(candlesticks);
+
     scaleX = 1;
     scaleY = 1;
 
-    defaultBarWidth = defaultWidth / 2 / length;
-    defaultValueHeight = defaultHeight / 2 / (maxY - minY);
+    barWidth = defaultWidth / length;
+    valueHeight = defaultHeight / 1.5 / (maxY - minY);
 
-    const minXPixel = (minX * defaultBarWidth) * scaleX;
-    const minYPixel = (defaultHeight - minY * defaultValueHeight) * scaleY;
+    const minXPixel = (minX * barWidth) * scaleX;
+    const minYPixel = (defaultHeight - minY * valueHeight) * scaleY;
 
-    offsetX = -minXPixel + 300;
-    offsetY = defaultHeight - minYPixel * scaleY - 200;
+    offsetX = -minXPixel;
+    offsetY = defaultHeight - minYPixel * scaleY - 100;
 }
 
 export const drawAll = (context, yAxisContext, xAxisContext, candlesticks) => {
@@ -112,7 +113,7 @@ const drawYAxisOnChart = (context, candlesticks) => {
     context.strokeStyle = context.fillStyle;
     context.beginPath();
     context.moveTo(axisOffset, 0);
-    context.lineTo(axisOffset, defaultHeight - 50);
+    context.lineTo(axisOffset, defaultHeight - axisOffset);
     context.stroke();
 
     drawYAxisTicks(context);
@@ -122,7 +123,7 @@ const drawYAxisOnChart = (context, candlesticks) => {
 const drawXAxisTicks = (context) => {
     context.beginPath();
     const tickCount = 30;
-    const tickSpacing = Math.max(60, (defaultBarWidth) * scaleX + 5);
+    const tickSpacing = Math.max(60, (barWidth) * scaleX + 5);
 
     let xAxisValue = offsetX;
     if (xAxisValue < 0) {
@@ -144,14 +145,14 @@ const drawXAxisLabels = (context, candlesticks) => {
     }
 
     const tickCount = 30;
-    const tickSpacing = Math.max(60, (defaultBarWidth) * scaleX + 5);
+    const tickSpacing = Math.max(60, (barWidth) * scaleX + 5);
     let xAxisValue = offsetX;
     if (xAxisValue < 0) {
         xAxisValue = 0 - offsetX % tickSpacing;
     }
 
     for (let i = 0; i < tickCount; i++) {
-        const xValue = Math.round(((xAxisValue - offsetX) / scaleX) / defaultBarWidth);
+        const xValue = Math.round(((xAxisValue - offsetX) / scaleX) / barWidth);
         const xLabel = xLabelLookup[xValue];
 
         if (xLabel) {
@@ -171,14 +172,14 @@ const drawYAxisTicks = (context) => {
     context.beginPath();
     const tickCount = 30;
     let yAxisValue = defaultHeight * scaleY + offsetY;
-    if (yAxisValue > 600) {
-        yAxisValue = 600 - yAxisValue % 30
+    if (yAxisValue > defaultHeight) {
+        yAxisValue = defaultHeight - yAxisValue % tickCount
     }
 
     for (let i = 0; i < tickCount; i++) {
         context.moveTo(axisOffset, yAxisValue);
         context.lineTo(axisOffset - 5, yAxisValue);
-        yAxisValue -= 30;
+        yAxisValue -= tickCount;
     }
     context.stroke();
 };
@@ -187,14 +188,14 @@ const drawYAxisLabels = (context) => {
     context.font = "12px Arial";
     const tickCount = 30;
     let yAxisValue = defaultHeight * scaleY + offsetY;
-    if (yAxisValue > 600) {
-        yAxisValue = 600 - yAxisValue % 30
+    if (yAxisValue > defaultHeight) {
+        yAxisValue = defaultHeight - yAxisValue % tickCount
     }
 
     for (let i = 0; i < tickCount; i++) {
-        const yValue = Math.round((defaultHeight - ((yAxisValue - offsetY) / scaleY)) / defaultValueHeight)
+        const yValue = Math.round((defaultHeight - ((yAxisValue - offsetY) / scaleY)) / valueHeight)
         context.fillText(yValue, 10, yAxisValue + 3);
-        yAxisValue -= 30;
+        yAxisValue -= tickCount;
     }
 };
 
@@ -212,16 +213,16 @@ const drawCandlestick = (context, open, high, low, close, x) => {
         bottom = open;
     }
 
-    context.fillRect((x * defaultBarWidth - (defaultBarWidth / 2)) * scaleX + offsetX, (defaultHeight - open * defaultValueHeight) * scaleY + offsetY, (defaultBarWidth) * scaleX, (open * defaultValueHeight - close * defaultValueHeight) * scaleY);
+    context.fillRect((x * barWidth - (barWidth / 2)) * scaleX + offsetX, (defaultHeight - open * valueHeight) * scaleY + offsetY, (barWidth) * scaleX, (open * valueHeight - close * valueHeight) * scaleY);
 
     context.beginPath();
-    context.moveTo((x * defaultBarWidth) * scaleX + offsetX, (defaultHeight - high * defaultValueHeight) * scaleY + offsetY);
-    context.lineTo((x * defaultBarWidth) * scaleX + offsetX, (defaultHeight - top * defaultValueHeight) * scaleY + offsetY);
+    context.moveTo((x * barWidth) * scaleX + offsetX, (defaultHeight - high * valueHeight) * scaleY + offsetY);
+    context.lineTo((x * barWidth) * scaleX + offsetX, (defaultHeight - top * valueHeight) * scaleY + offsetY);
     context.stroke();
 
     context.beginPath();
-    context.moveTo((x * defaultBarWidth) * scaleX + offsetX, (defaultHeight -  low * defaultValueHeight) * scaleY + offsetY);
-    context.lineTo((x * defaultBarWidth) * scaleX + offsetX, (defaultHeight -  bottom * defaultValueHeight) * scaleY + offsetY);
+    context.moveTo((x * barWidth) * scaleX + offsetX, (defaultHeight -  low * valueHeight) * scaleY + offsetY);
+    context.lineTo((x * barWidth) * scaleX + offsetX, (defaultHeight -  bottom * valueHeight) * scaleY + offsetY);
     context.stroke();
 };
 
@@ -232,7 +233,13 @@ const getMinMaxValues = (candlesticks) => {
     if (!candlesticks)
         return;
 
+    const minVisibleX = Math.round(Math.max(0, -offsetX / scaleX / barWidth));
+    const maxVisibleX = Math.round(-(offsetX - defaultWidth) / scaleX / barWidth) + minVisibleX;
+
     candlesticks.forEach(candle => {
+        if(candle.x < minVisibleX || candle.x > maxVisibleX) {
+            return;
+        }
         if (candle.x < minX) minX = candle.x;
         if (candle.x > maxX) maxX = candle.x;
         if (candle.low < minY) minY = candle.low;
@@ -369,18 +376,19 @@ const drawCrosshair = (context, x, y) => {
 
     context.beginPath();
     context.moveTo(0, y);
-    context.lineTo(1200, y);
+    context.lineTo(defaultWidth, y);
     context.stroke();
 
     context.setLineDash([]);
 
     context.font = "12px Arial";
-    const xValue = Math.round((((x - offsetX) / scaleX)) / defaultBarWidth);
-    const yValue = Math.round((defaultHeight - ((y - offsetY) / scaleY)) / defaultValueHeight);
+    const xValue = Math.round((((x - offsetX) / scaleX)) / barWidth);
+    const yValue = Math.round((defaultHeight - ((y - offsetY) / scaleY)) / valueHeight);
     const xLabel = xLabelLookup[xValue] || xValue;
 
     context.fillStyle = "blue";
     context.strokeStyle = context.fillStyle;
-    context.fillText(`X': ${xLabel}`, x + 5, y + 10);
-    context.fillText(`Y': ${yValue}`, x + 5, y + 20);
+    context.fillText(`${xLabel}`, x + 5, y + 10);
+    context.fillText(`${yValue}`, x + 5, y + 20);
+
 };
