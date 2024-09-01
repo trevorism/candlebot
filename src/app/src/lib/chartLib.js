@@ -58,7 +58,6 @@ export const teardownChart = (chartRef, yAxisRef, xAxisRef) => {
     xAxisRef.value.removeEventListener("mousemove", (event) => scaleXAxis(event, chartRef));
     xAxisRef.value.removeEventListener("mouseup", endPan);
     xAxisRef.value.removeEventListener("mouseleave", endPan);
-
 };
 
 export const setViewportOffsetAndScale = (candlesticks) => {
@@ -134,11 +133,11 @@ const drawYAxisOnChart = (context, candlesticks) => {
     context.strokeStyle = context.fillStyle;
     context.beginPath();
     context.moveTo(axisOffset, 0);
-    context.lineTo(axisOffset, defaultHeight - axisOffset);
+    context.lineTo(axisOffset, defaultHeight);
     context.stroke();
 
     drawYAxisTicks(context);
-    drawYAxisLabels(context);
+    drawYAxisLabels(context, candlesticks);
 };
 
 const drawYAxisGridlines = (context) => {
@@ -190,7 +189,7 @@ const drawXAxisLabels = (context, candlesticks) => {
     }
 
     for (let i = 0; i < tickCount; i++) {
-        const xValue = Math.round(((xAxisValue - offsetX) / scaleX) / barWidth);
+        const xValue = computeXValueFromPixel(xAxisValue);
         const xLabel = xLabelLookup[xValue];
 
         if (xLabel) {
@@ -222,7 +221,7 @@ const drawYAxisTicks = (context) => {
     context.stroke();
 };
 
-const drawYAxisLabels = (context) => {
+const drawYAxisLabels = (context, candlesticks) => {
     context.font = "12px Arial";
     const tickCount = 30;
     let yAxisValue = defaultHeight * scaleY + offsetY;
@@ -231,8 +230,8 @@ const drawYAxisLabels = (context) => {
     }
 
     for (let i = 0; i < tickCount; i++) {
-        const yValue = Math.round((defaultHeight - ((yAxisValue - offsetY) / scaleY)) / valueHeight)
-        context.fillText(yValue, 10, yAxisValue + 3);
+        const yValue = computeYValueFromPixel(yAxisValue, candlesticks);
+        context.fillText(yValue, 5, yAxisValue + 3);
         yAxisValue -= tickCount;
     }
 };
@@ -407,10 +406,10 @@ const handleMouseMove = (event, chartRef, candlesticks) => {
     drawXAxisGridlines(context);
     drawYAxisGridlines(context);
     drawCandlesticks(context, candlesticks);
-    drawCrosshair(context, mouseX, mouseY);
+    drawCrosshair(context, mouseX, mouseY, candlesticks);
 };
 
-const drawCrosshair = (context, x, y) => {
+const drawCrosshair = (context, x, y, candlesticks) => {
     context.strokeStyle = 'black';
     context.setLineDash([5, 5]);
 
@@ -427,13 +426,36 @@ const drawCrosshair = (context, x, y) => {
     context.setLineDash([]);
 
     context.font = "12px Arial";
-    const xValue = Math.round((((x - offsetX) / scaleX)) / barWidth);
-    const yValue = Math.round((defaultHeight - ((y - offsetY) / scaleY)) / valueHeight);
+    const xValue = computeXValueFromPixel(x);
+    const yValue = computeYValueFromPixel(y, candlesticks);
     const xLabel = xLabelLookup[xValue] || xValue;
 
     context.fillStyle = "blue";
     context.strokeStyle = context.fillStyle;
     context.fillText(`${xLabel}`, x + 5, y + 10);
     context.fillText(`${yValue}`, x + 5, y + 20);
+};
+
+const computeXValueFromPixel = (x) => {
+    return Math.round(((x - offsetX) / scaleX) / barWidth);
+};
+
+const computeYValueFromPixel = (y, candlesticks) => {
+    const {minX, maxX, minY, maxY, length} = getMinMaxValues(candlesticks);
+
+    y = (defaultHeight - ((y - offsetY) / scaleY)) / valueHeight
+
+    //Round differently depending on the range of the values
+    if(maxY - minY < 2){
+        return y.toFixed(4);
+    }
+    if(maxY - minY < 10){
+        return y.toFixed(3);
+    }
+    if(maxY - minY < 100){
+        return y.toFixed(2);
+    }
+    return y.toFixed(0);
+
 
 };
