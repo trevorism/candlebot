@@ -4,7 +4,7 @@ let startX = 0, startY = 0;
 let isPanning = false, isScalingY = false, isScalingX = false;
 
 let valueHeight = 30;
-let barWidth = 90;
+let barWidth = 10;
 
 const defaultWidth = 1200;
 const defaultHeight = 600;
@@ -20,73 +20,74 @@ export const setupChart = (chartRef, yAxisRef, xAxisRef, candlesticks) => {
     yAxisRef.value.style.cursor = "ns-resize";
     xAxisRef.value.style.cursor = "ew-resize";
 
-    setViewportOffsetAndScale(candlesticks);
+    setDefaultOffsetAndScale(candlesticks);
     drawAll(context, yAxisContext, xAxisContext, candlesticks);
 
-    chartRef.value.addEventListener("wheel", (event) => handleWheel(event, chartRef, yAxisContext, xAxisContext, candlesticks));
+    chartRef.value.addEventListener("wheel", (event) => onWheel(event, chartRef, yAxisContext, xAxisContext, candlesticks));
     chartRef.value.addEventListener("mousedown", (event) => startPan(event));
     chartRef.value.addEventListener("mousemove", (event) => pan(event, chartRef, yAxisContext, xAxisContext, candlesticks));
-    chartRef.value.addEventListener("mouseup", endPan);
-    chartRef.value.addEventListener("mouseleave", endPan);
-    chartRef.value.addEventListener("mousemove", (event) => handleMouseMove(event, chartRef, candlesticks));
+    chartRef.value.addEventListener("mouseup", onMouseUp);
+    chartRef.value.addEventListener("mouseleave", onMouseUp);
+    chartRef.value.addEventListener("mousemove", (event) => onMouseMove(event, chartRef, candlesticks));
 
     yAxisRef.value.addEventListener("mousedown", (event) => startScalingY(event));
     yAxisRef.value.addEventListener("mousemove", (event) => scaleYAxis(event, chartRef, yAxisContext, xAxisContext, candlesticks));
-    yAxisRef.value.addEventListener("mouseup", endPan);
-    yAxisRef.value.addEventListener("mouseleave", endPan);
+    yAxisRef.value.addEventListener("mouseup", onMouseUp);
+    yAxisRef.value.addEventListener("mouseleave", onMouseUp);
 
     xAxisRef.value.addEventListener("mousedown", (event) => startScalingX(event));
     xAxisRef.value.addEventListener("mousemove", (event) => scaleXAxis(event, chartRef, yAxisContext, xAxisContext, candlesticks));
-    xAxisRef.value.addEventListener("mouseup", endPan);
-    xAxisRef.value.addEventListener("mouseleave", endPan);
+    xAxisRef.value.addEventListener("mouseup", onMouseUp);
+    xAxisRef.value.addEventListener("mouseleave", onMouseUp);
 };
 
 export const teardownChart = (chartRef, yAxisRef, xAxisRef) => {
-    chartRef.value.removeEventListener("wheel", (event) => handleWheel(event, chartRef));
+    chartRef.value.removeEventListener("wheel", (event) => onWheel(event, chartRef));
     chartRef.value.removeEventListener("mousedown", (event) => startPan(event, chartRef));
     chartRef.value.removeEventListener("mousemove", (event) => pan(event, chartRef));
-    chartRef.value.removeEventListener("mouseup", endPan);
-    chartRef.value.removeEventListener("mouseleave", endPan);
-    chartRef.value.removeEventListener("mousemove", (event) => handleMouseMove(event, chartRef));
+    chartRef.value.removeEventListener("mouseup", onMouseUp);
+    chartRef.value.removeEventListener("mouseleave", onMouseUp);
+    chartRef.value.removeEventListener("mousemove", (event) => onMouseMove(event, chartRef));
 
     yAxisRef.value.removeEventListener("mousedown", (event) => startScalingY(event));
     yAxisRef.value.removeEventListener("mousemove", (event) => scaleYAxis(event, chartRef));
-    yAxisRef.value.removeEventListener("mouseup", endPan);
-    yAxisRef.value.removeEventListener("mouseleave", endPan);
+    yAxisRef.value.removeEventListener("mouseup", onMouseUp);
+    yAxisRef.value.removeEventListener("mouseleave", onMouseUp);
 
     xAxisRef.value.removeEventListener("mousedown", (event) => startScalingX(event));
     xAxisRef.value.removeEventListener("mousemove", (event) => scaleXAxis(event, chartRef));
-    xAxisRef.value.removeEventListener("mouseup", endPan);
-    xAxisRef.value.removeEventListener("mouseleave", endPan);
+    xAxisRef.value.removeEventListener("mouseup", onMouseUp);
+    xAxisRef.value.removeEventListener("mouseleave", onMouseUp);
 };
 
-export const setViewportOffsetAndScale = (candlesticks) => {
+export const setDefaultOffsetAndScale = (candlesticks) => {
     const {minX, maxX, minY, maxY, length} = getMinMaxValues(candlesticks);
 
     scaleX = 1;
     scaleY = 1;
 
     barWidth = defaultWidth / length;
-    valueHeight = defaultHeight / 1.5 / (maxY - minY);
+    valueHeight = defaultHeight / 1.2 / (maxY - minY);
 
     const minXPixel = (minX * barWidth) * scaleX;
     const minYPixel = (defaultHeight - minY * valueHeight) * scaleY;
 
     offsetX = -minXPixel - (barWidth * scaleX / 2);
-    offsetY = defaultHeight - minYPixel * scaleY - 100;
+    offsetY = defaultHeight - minYPixel * scaleY - 50;
 }
 
 export const drawAll = (context, yAxisContext, xAxisContext, candlesticks) => {
-    context.clearRect(0, 0, context.canvas.width, context.canvas.height);
-    yAxisContext.clearRect(0, 0, yAxisContext.canvas.width, yAxisContext.canvas.height);
-    xAxisContext.clearRect(0, 0, xAxisContext.canvas.width, xAxisContext.canvas.height);
-
-    drawXAxisGridlines(context);
-    drawXAxisOnChart(xAxisContext, candlesticks);
-    drawYAxisGridlines(context);
-    drawYAxisOnChart(yAxisContext, candlesticks);
-    drawCandlesticks(context, candlesticks);
+    drawXAxis(xAxisContext, candlesticks);
+    drawYAxis(yAxisContext, candlesticks);
+    drawMainChart(context, candlesticks);
 };
+
+function drawMainChart(context, candlesticks) {
+    context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+    drawXAxisGridlines(context);
+    drawYAxisGridlines(context);
+    drawCandlesticks(context, candlesticks);
+}
 
 const drawCandlesticks = (context, candlesticks) => {
     if (!candlesticks)
@@ -97,7 +98,8 @@ const drawCandlesticks = (context, candlesticks) => {
     });
 };
 
-const drawXAxisOnChart = (context, candlesticks) => {
+const drawXAxis = (context, candlesticks) => {
+    context.clearRect(0, 0, context.canvas.width, context.canvas.height);
     context.fillStyle = "black";
     context.strokeStyle = context.fillStyle;
     context.beginPath();
@@ -128,7 +130,8 @@ const drawXAxisGridlines = (context) => {
     context.stroke();
 }
 
-const drawYAxisOnChart = (context, candlesticks) => {
+const drawYAxis = (context, candlesticks) => {
+    context.clearRect(0, 0, context.canvas.width, context.canvas.height);
     context.fillStyle = "black";
     context.strokeStyle = context.fillStyle;
     context.beginPath();
@@ -263,6 +266,33 @@ const drawCandlestick = (context, open, high, low, close, x) => {
     context.stroke();
 };
 
+const drawCrosshair = (context, x, y, candlesticks) => {
+    context.strokeStyle = 'black';
+    context.setLineDash([5, 5]);
+
+    context.beginPath();
+    context.moveTo(x, 0);
+    context.lineTo(x, defaultHeight);
+    context.stroke();
+
+    context.beginPath();
+    context.moveTo(0, y);
+    context.lineTo(defaultWidth, y);
+    context.stroke();
+
+    context.setLineDash([]);
+
+    context.font = "12px Arial";
+    const xValue = computeXValueFromPixel(x);
+    const yValue = computeYValueFromPixel(y, candlesticks);
+    const xLabel = xLabelLookup[xValue] || xValue;
+
+    context.fillStyle = "blue";
+    context.strokeStyle = context.fillStyle;
+    context.fillText(`${xLabel}`, x + 5, y + 10);
+    context.fillText(`${yValue}`, x + 5, y + 20);
+};
+
 const getMinMaxValues = (candlesticks) => {
     let minX = Infinity, maxX = -Infinity;
     let minY = Infinity, maxY = -Infinity;
@@ -307,7 +337,7 @@ export const createXLabelLookup = (candlesticks) => {
     return lookup;
 };
 
-const handleWheel = (event, chartRef, yAxisContext, xAxisContext, candlesticks) => {
+const onWheel = (event, chartRef, yAxisContext, xAxisContext, candlesticks) => {
     event.preventDefault();
     const minScaleX = 0.1;
     const oldScaleX = scaleX;
@@ -356,7 +386,7 @@ const scaleYAxis = (event, chartRef, yAxisContext, xAxisContext, candlesticks) =
     if(!isScalingY) {
         return;
     }
-    const minScaleY = 0.1;
+    const minScaleY = 0.05;
     const deltaY = event.clientY - startY;
     const normalizedDeltaY = deltaY > 0 ? -1 : 1;
     const oldScaleY = scaleY;
@@ -374,7 +404,7 @@ const scaleXAxis = (event, chartRef, yAxisContext, xAxisContext, candlesticks) =
     if(!isScalingX) {
         return;
     }
-    const minScaleX = 0.1;
+    const minScaleX = 0.05;
     const deltaX = event.clientX - startX;
     const normalizedDeltaX = deltaX > 0 ? -1 : 1;
     const oldScaleX = scaleX;
@@ -388,52 +418,21 @@ const scaleXAxis = (event, chartRef, yAxisContext, xAxisContext, candlesticks) =
     drawAll(context, yAxisContext, xAxisContext, candlesticks);
 }
 
-const endPan = () => {
+const onMouseUp = () => {
     isPanning = false;
     isScalingY = false;
     isScalingX = false;
 };
 
-const handleMouseMove = (event, chartRef, candlesticks) => {
+const onMouseMove = (event, chartRef, candlesticks) => {
     const canvas = chartRef.value;
     const context = canvas.getContext("2d");
     const rect = canvas.getBoundingClientRect();
     const mouseX = event.clientX - rect.left;
     const mouseY = event.clientY - rect.top;
 
-    context.clearRect(0, 0, canvas.width, canvas.height);
-
-    drawXAxisGridlines(context);
-    drawYAxisGridlines(context);
-    drawCandlesticks(context, candlesticks);
+    drawMainChart(context, candlesticks);
     drawCrosshair(context, mouseX, mouseY, candlesticks);
-};
-
-const drawCrosshair = (context, x, y, candlesticks) => {
-    context.strokeStyle = 'black';
-    context.setLineDash([5, 5]);
-
-    context.beginPath();
-    context.moveTo(x, 0);
-    context.lineTo(x, defaultHeight);
-    context.stroke();
-
-    context.beginPath();
-    context.moveTo(0, y);
-    context.lineTo(defaultWidth, y);
-    context.stroke();
-
-    context.setLineDash([]);
-
-    context.font = "12px Arial";
-    const xValue = computeXValueFromPixel(x);
-    const yValue = computeYValueFromPixel(y, candlesticks);
-    const xLabel = xLabelLookup[xValue] || xValue;
-
-    context.fillStyle = "blue";
-    context.strokeStyle = context.fillStyle;
-    context.fillText(`${xLabel}`, x + 5, y + 10);
-    context.fillText(`${yValue}`, x + 5, y + 20);
 };
 
 const computeXValueFromPixel = (x) => {
@@ -442,10 +441,8 @@ const computeXValueFromPixel = (x) => {
 
 const computeYValueFromPixel = (y, candlesticks) => {
     const {minX, maxX, minY, maxY, length} = getMinMaxValues(candlesticks);
-
     y = (defaultHeight - ((y - offsetY) / scaleY)) / valueHeight
 
-    //Round differently depending on the range of the values
     if(maxY - minY < 2){
         return y.toFixed(4);
     }
@@ -456,6 +453,4 @@ const computeYValueFromPixel = (y, candlesticks) => {
         return y.toFixed(2);
     }
     return y.toFixed(0);
-
-
 };
