@@ -17,10 +17,14 @@ class FileOrKrakenCandleProvider implements CandleProvider {
 
     @Override
     List<Candle> getCandles(String assetPair, Duration duration) {
+        return krakenClient.getCandles(assetPair, duration)
+    }
+
+    List<Candle> getCandlesFromFile(String assetPair, Duration duration) {
         if (assetPair.toUpperCase() == "BTCUSD" && duration == ValidCandleDurations.DAY) {
             String arrayString = FileOrKrakenCandleProvider.class.getClassLoader().getResourceAsStream("btcusd-day").text
             return gson.fromJson(arrayString, List)
         }
-        return krakenClient.getCandles(assetPair, duration)
+        return []
     }
 }

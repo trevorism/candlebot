@@ -9,7 +9,8 @@ class FileOrKrakenCandleProviderTest {
 
     @Test
     void testGetCandles() {
-        List<Candle> candleList = new FileOrKrakenCandleProvider().getCandles("BTCUSD", Duration.ofDays(1))
+        FileOrKrakenCandleProvider candleProvider = new FileOrKrakenCandleProvider()
+        List<Candle> candleList = candleProvider.getCandlesFromFile("BTCUSD", Duration.ofDays(1))
         assert candleList.size() == 720
     }
 }
