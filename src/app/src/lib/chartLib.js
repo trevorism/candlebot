@@ -73,7 +73,7 @@ export const setViewportOffsetAndScale = (candlesticks) => {
     const minXPixel = (minX * barWidth) * scaleX;
     const minYPixel = (defaultHeight - minY * valueHeight) * scaleY;
 
-    offsetX = -minXPixel;
+    offsetX = -minXPixel - (barWidth * scaleX / 2);
     offsetY = defaultHeight - minYPixel * scaleY - 100;
 }
 
@@ -82,7 +82,9 @@ export const drawAll = (context, yAxisContext, xAxisContext, candlesticks) => {
     yAxisContext.clearRect(0, 0, yAxisContext.canvas.width, yAxisContext.canvas.height);
     xAxisContext.clearRect(0, 0, xAxisContext.canvas.width, xAxisContext.canvas.height);
 
+    drawXAxisGridlines(context);
     drawXAxisOnChart(xAxisContext, candlesticks);
+    drawYAxisGridlines(context);
     drawYAxisOnChart(yAxisContext, candlesticks);
     drawCandlesticks(context, candlesticks);
 };
@@ -108,6 +110,25 @@ const drawXAxisOnChart = (context, candlesticks) => {
     drawXAxisLabels(context, candlesticks);
 }
 
+const drawXAxisGridlines = (context) => {
+    context.strokeStyle = "rgba(211, 211, 211, 0.5)";
+    context.beginPath();
+    const tickCount = 30;
+    const tickSpacing = Math.max(60, (barWidth) * scaleX + 5);
+
+    let xAxisValue = offsetX;
+    if (xAxisValue < 0) {
+        xAxisValue = 0 - offsetX % tickSpacing;
+    }
+
+    for (let i = 0; i < tickCount; i++) {
+        context.moveTo(xAxisValue, 0);
+        context.lineTo(xAxisValue, defaultHeight);
+        xAxisValue += tickSpacing;
+    }
+    context.stroke();
+}
+
 const drawYAxisOnChart = (context, candlesticks) => {
     context.fillStyle = "black";
     context.strokeStyle = context.fillStyle;
@@ -119,6 +140,23 @@ const drawYAxisOnChart = (context, candlesticks) => {
     drawYAxisTicks(context);
     drawYAxisLabels(context);
 };
+
+const drawYAxisGridlines = (context) => {
+    context.strokeStyle = "rgba(211, 211, 211, 0.5)";
+    context.beginPath();
+    const tickCount = 30;
+    let yAxisValue = defaultHeight * scaleY + offsetY;
+    if (yAxisValue > defaultHeight) {
+        yAxisValue = defaultHeight - yAxisValue % tickCount
+    }
+
+    for (let i = 0; i < tickCount; i++) {
+        context.moveTo(0, yAxisValue);
+        context.lineTo(defaultWidth, yAxisValue);
+        yAxisValue -= tickCount;
+    }
+    context.stroke();
+}
 
 const drawXAxisTicks = (context) => {
     context.beginPath();
@@ -233,8 +271,13 @@ const getMinMaxValues = (candlesticks) => {
     if (!candlesticks)
         return;
 
-    const minVisibleX = Math.round(Math.max(0, -offsetX / scaleX / barWidth));
-    const maxVisibleX = Math.round(-(offsetX - defaultWidth) / scaleX / barWidth) + minVisibleX;
+    let minVisibleX = Math.round(Math.max(0, -offsetX / scaleX / barWidth)) - 1;
+    let maxVisibleX = Math.round(-(offsetX - defaultWidth) / scaleX / barWidth) + minVisibleX;
+
+    if(maxVisibleX - minVisibleX <= 0){
+        minVisibleX = 0;
+        maxVisibleX = candlesticks.length;
+    }
 
     candlesticks.forEach(candle => {
         if(candle.x < minVisibleX || candle.x > maxVisibleX) {
@@ -361,6 +404,8 @@ const handleMouseMove = (event, chartRef, candlesticks) => {
 
     context.clearRect(0, 0, canvas.width, canvas.height);
 
+    drawXAxisGridlines(context);
+    drawYAxisGridlines(context);
     drawCandlesticks(context, candlesticks);
     drawCrosshair(context, mouseX, mouseY);
 };
