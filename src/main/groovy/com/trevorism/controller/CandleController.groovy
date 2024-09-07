@@ -50,7 +50,7 @@ class CandleController {
         }
     }
 
-    static Date convertIsoToDate(String isoTime) {
+    private static Date convertIsoToDate(String isoTime) {
         SimpleDateFormat sdf = new SimpleDateFormat(ISO_8601_FORMAT)
         sdf.setTimeZone(TimeZone.getTimeZone("UTC"))
         return sdf.parse(isoTime)
