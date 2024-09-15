@@ -28,9 +28,11 @@ onBeforeUnmount(() => {
   teardownChart(chartRef, yAxisRef, xAxisRef);
 });
 
-watch(props.uiData, () => {
+watch(props.uiData, (newVal, oldVal) => {
   refreshCandles();
 });
+
+
 </script>
 
 <template>

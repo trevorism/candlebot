@@ -109,7 +109,9 @@ function drawMainChart(context, chartData) {
     drawXAxisGridlines(context);
     drawYAxisGridlines(context);
     drawCandlesticks(context, chartData.candles);
-    drawInflectionPoints(context, chartData.inflectionPoints);
+    if (chartData.showInflectionPoints) {
+        drawInflectionPoints(context, chartData.inflectionPoints);
+    }
 }
 
 const drawCandlesticks = (context, candlesticks) => {

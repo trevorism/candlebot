@@ -2,9 +2,10 @@
 import MenuBar from '@trevorism/ui-header-bar'
 import FinancialChart from "./components/FinancialChart.vue";
 import axios from 'axios';
-
 import { ref, reactive } from "vue";
-const uiData = reactive({  candles: [], inflectionPoints: [] });
+import { VaCheckbox } from 'vuestic-ui';
+
+const uiData = reactive({ candles: [], inflectionPoints: [], showInflectionPoints: false });
 
 const assets = ["BTCUSD", "ETHUSD", "LTCUSD", "XRPUSD", "ADAUSD", "SOLUSD", "AVAXUSD", "LINKUSD", "BCHUSD", "DOTUSD"];
 const selectedAsset = ref(assets[0]);
@@ -39,17 +40,25 @@ const updateInput = () => {
     Candle Duration:
     <va-select class="ml-4 w-1/8 mr-4" :options="timeFrames" v-model="selectedTimeFrame" @update:modelValue="updateInput"></va-select>
     Current Price: {{uiData.candles.length > 0 ? uiData.candles[uiData.candles.length - 1].close : "Loading..."}}
+    <va-checkbox class="inline-checkbox" v-model="uiData.showInflectionPoints" label="Show Inflection Points" />
   </div>
 
   <financial-chart :uiData="uiData"></financial-chart>
 </template>
 
 <style scoped>
-  .assetPicker{
-    position: absolute;
-    top: 100px;
-    left: 100px;
-    width: 1000px;
-  }
+.assetPicker {
+  position: absolute;
+  top: 100px;
+  left: 100px;
+  width: 1000px;
+}
 
+.inline-checkbox{
+  margin-left: 20px;
+}
+
+.va-checkbox {
+  --va-checkbox-background: lightgray;
+}
 </style>
