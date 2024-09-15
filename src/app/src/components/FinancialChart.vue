@@ -3,8 +3,8 @@ import {onBeforeUnmount, onMounted, ref, watch} from "vue";
 import {drawAll, setupChart, setDefaultOffsetAndScale, teardownChart} from '../lib/chartLib.js';
 
 const props = defineProps({
-  candlesticks: {
-    type: Array
+  uiData: {
+    type: Object
   }
 });
 
@@ -13,25 +13,23 @@ const yAxisRef = ref(null);
 const xAxisRef = ref(null);
 
 const refreshCandles = () => {
-  setDefaultOffsetAndScale(props.candlesticks);
+  setDefaultOffsetAndScale(props.uiData);
   const context = chartRef.value.getContext("2d");
   const yAxisContext = yAxisRef.value.getContext("2d");
   const xAxisContext = xAxisRef.value.getContext("2d");
-  drawAll(context, yAxisContext, xAxisContext, props.candlesticks);
+  drawAll(context, yAxisContext, xAxisContext, props.uiData);
 };
 
 onMounted(() => {
-  setupChart(chartRef, yAxisRef, xAxisRef, props.candlesticks);
+  setupChart(chartRef, yAxisRef, xAxisRef, props.uiData);
 });
 
 onBeforeUnmount(() => {
   teardownChart(chartRef, yAxisRef, xAxisRef);
 });
 
-watch(props.candlesticks, (newCandlesticks) => {
-  if (newCandlesticks.length > 0) {
-    refreshCandles();
-  }
+watch(props.uiData, () => {
+  refreshCandles();
 });
 </script>
 
