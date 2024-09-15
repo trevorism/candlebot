@@ -3,6 +3,7 @@ package com.trevorism.controller
 import com.trevorism.kraken.model.Candle
 import com.trevorism.model.UICandle
 import com.trevorism.service.CandleProvider
+import com.trevorism.service.SinglePerCandleInflectionPointCalculator
 import org.junit.jupiter.api.Test
 
 import java.time.Duration
@@ -14,6 +15,7 @@ class CandleControllerTest {
     @Test
     void testGetCandles() {
         CandleController candleController = new CandleController()
+        candleController.inflectionPointCalculator = new SinglePerCandleInflectionPointCalculator()
         candleController.candleProvider = new CandleProvider() {
             @Override
             List<Candle> getCandles(String assetPair, Duration duration) {
@@ -25,7 +27,7 @@ class CandleControllerTest {
             }
         }
 
-        List<UICandle> uiCandles = candleController.getCandles("BTCUSD", "1d")
+        List<UICandle> uiCandles = candleController.getChartData("BTCUSD", "1d").candles
 
         assert uiCandles
         assert uiCandles.size() == 3
