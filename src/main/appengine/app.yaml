@@ -1,4 +1,4 @@
-runtime: java17
+runtime: java25
 service: candlebot
 entrypoint: java -jar candlebot-all.jar
 handlers:
