@@ -1,3 +1,7 @@
+## 0.5.0
+
+Add js tests and update dependencies.
+
 ## 0.4.0
 
 - Upgraded Micronaut to 5.0.2
