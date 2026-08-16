@@ -1,5 +1,6 @@
 package com.trevorism.controller
 
+import com.trevorism.AppVersion
 import org.junit.jupiter.api.Test
 
 /**
@@ -17,5 +18,11 @@ class RootControllerTest {
     void testRootControllerPing(){
         RootController rootController = new RootController()
         assert rootController.ping() == "pong"
+    }
+
+    @Test
+    void testRootControllerVersion(){
+        RootController rootController = new RootController()
+        assert rootController.version().contains(AppVersion.SEMVER)
     }
 }

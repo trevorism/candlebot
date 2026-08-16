@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory
 @OpenAPIDefinition(
         info = @Info(
                 title = "Candlebot API",
-                version = "0.5.0",
+                version = AppVersion.SEMVER,
                 description = "View and eventually automatically trade cryptocurrency pairs",
                 contact = @Contact(url = "https://trevorism.com", name = "Trevor Brooks", email = "tbrooks@trevorism.com")
         )
