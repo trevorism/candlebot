@@ -1,5 +1,5 @@
 <script setup>
-import MenuBar from '@trevorism/ui-header-bar'
+import { MenuBar } from '@trevorism/ui-header-bar'
 import FinancialChart from "./components/FinancialChart.vue";
 import axios from 'axios';
 import { ref, reactive } from "vue";
