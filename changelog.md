@@ -1,3 +1,7 @@
+## 0.7.0
+
+Serve the shared auth routes so the header bar can sign people in and out here.
+
 ## 0.6.0
 
 Update dependencies.
